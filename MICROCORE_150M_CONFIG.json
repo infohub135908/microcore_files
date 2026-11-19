@@ -1,0 +1,131 @@
+{
+  "model_identifier": "MICROCORE_150M",
+  "experiment_series": [
+    "150M",
+    "300M",
+    "500M",
+    "750M"
+  ],
+  "note": "Only the 150M experiment is implemented in Revision 9.1.2. The 300M/500M/750M targets are unchanged and deferred.",
+  "tokenizer": {
+    "package": "tiktoken",
+    "version": "0.14.0",
+    "encoding": "cl100k_base",
+    "strict_version_check": true,
+    "ordinary_tokens": 100256,
+    "max_token_id": 100277,
+    "eos_id": 100257,
+    "eos_convention": "cl100k <|endoftext|> appended after every document; document boundaries are preserved in the packed stream",
+    "model_vocab_size": 100278,
+    "vocab_note": "100,256 ordinary mergeable tokens + special/reserved ids up to 100,277; the model embedding and output layers use 100,278 rows so every valid cl100k token id is representable",
+    "frozen_for_all_model_sizes": true
+  },
+  "architecture": {
+    "type": "decoder-only Transformer",
+    "n_layer": 12,
+    "d_model": 732,
+    "n_head": 6,
+    "head_dim": 122,
+    "mlp_hidden": 2928,
+    "mlp_activation": "GELU",
+    "normalization": "RMSNorm (pre-norm, eps 1e-5)",
+    "positional_encoding": "RoPE (theta 10000)",
+    "attention": "causal self-attention via SDPA (memory-efficient/math backend on T4; T4 SM75 has no FlashAttention kernels)",
+    "biases": false,
+    "tied_embeddings": true,
+    "parameter_count_expected": 150580452,
+    "parameter_count_tolerance": 0.005,
+    "parameter_budget_note": "150,580,452 parameters (verified by instantiation and printed at run start) = 73,403,496 (tied embedding 100,278 x 732, counted once) + 12 layers x 6,431,352 (4*732^2 attention + 2*732*2928 MLP + 2*732 RMSNorm) + 732 (final norm); +0.387% vs 150,000,000, inside the +/-0.5% requirement. The trainer prints the exact count before allocating the optimizer and aborts outside the range.",
+    "init": "normal std 0.02, zero biases"
+  },
+  "data": {
+    "dataset": "HuggingFaceFW/fineweb-edu",
+    "revision_sha": "87f09149ef4734204d70ed1d046ddc9ca3f2b8f9",
+    "config": "sample/10BT",
+    "selection": "prepared/base_selection.jsonl",
+    "documents": 2994709,
+    "doc_tokens": 3000001612,
+    "stream_tokens_incl_eos": 3002996321,
+    "token_stream": "prepared/base_tokens.u32",
+    "stream_dtype": "uint32",
+    "selection_order_is_training_order": true,
+    "validation_holdout": "none (full selection used for training; documented)",
+    "contamination_quarantine": "SWE-bench Verified vs SWE-rebench-V2 and Terminal-Bench vs Nemotron-Pivot ran with 0 overlaps in Revision 9.1.1; applies to later agent-stage training"
+  },
+  "training": {
+    "seq_len": 2048,
+    "microbatch": 8,
+    "grad_accum": 30,
+    "effective_tokens_per_step": 491520,
+    "planned_steps": 6103,
+    "epochs": 1,
+    "lr_peak": 0.0003,
+    "lr_min": 3e-05,
+    "schedule": "cosine decay with 2% linear warmup",
+    "warmup_steps": 122,
+    "weight_decay": 0.1,
+    "adam_betas": [
+      0.9,
+      0.95
+    ],
+    "adam_eps": 1e-08,
+    "grad_clip": 1.0,
+    "seed": 1337,
+    "precision": "FP16 mixed precision + gradient scaling on CUDA (GradScaler); CPU fallback uses bfloat32 autocast for smoke tests only",
+    "gradient_checkpointing": "on by default for GPU runs (torch.utils.checkpoint) to fit the T4's 14.5 GiB budget; disabled on CPU; can be toggled in build_model(grad_checkpoint=)",
+    "tokens_planned_note": "6,103 steps x 491,520 tokens = 2,999,746,560 tokens consumed in one deterministic pass (~3.0B, within one step of the 3B budget; the exact step count is computed from the verified stream at run time)"
+  },
+  "checkpoint_policy": {
+    "dir": "microcore_data/train_150m",
+    "interval_steps": 500,
+    "files": [
+      "ckpt_last.pt",
+      "ckpt_prev.pt"
+    ],
+    "atomic_writes": true,
+    "previous_known_good_retained": true,
+    "contents": [
+      "model",
+      "optimizer",
+      "scaler",
+      "step",
+      "tokens_consumed",
+      "seq_cursor",
+      "rng_states",
+      "config",
+      "param_count",
+      "stream_manifest_sha256"
+    ],
+    "resume_validation": "parameter count, vocab/EOS, and data-manifest hash must match; corrupt or mismatched checkpoints are rejected and the previous known-good is used"
+  },
+  "logging": {
+    "format": "JSONL",
+    "path": "microcore_data/train_150m/train_log.jsonl",
+    "fields": [
+      "ts",
+      "model",
+      "param_count",
+      "step",
+      "tokens_consumed",
+      "loss",
+      "lr",
+      "grad_norm",
+      "steps_per_s",
+      "tokens_per_s",
+      "gpu_mem_gib",
+      "checkpoint",
+      "event"
+    ],
+    "run_manifest": "microcore_data/train_150m/run_manifest.json"
+  },
+  "storage_root": {
+    "colab": "/content/drive/MyDrive/microcore_data",
+    "local_fallback": "./microcore_data",
+    "shared_by": [
+      "MICROCORE_REVISION_9_1_1_DATA_PREPARATION.py",
+      "MICROCORE_REVISION_9_1_1_COLAB_VALIDATION.py",
+      "MICROCORE_150M_TRAIN.py",
+      "MICROCORE_150M_TRAIN_TESTS.py"
+    ]
+  }
+}
